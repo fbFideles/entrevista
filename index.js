@@ -1,48 +1,43 @@
 const express = require('express')
 const axios = require('axios')
+const bodyParser = require('body-parser')
+const cors = require('cors')
 
 const app = express()
 
-const apiData = async () => {
-    
-    try{
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({
+    extended: true
+}))
+app.use(cors())
 
-        return await axios.get("https://viacep.com.br/ws/63050222/json")
-    
-    } catch (err) {
-    
-        console.log(err)
-    
-    }
-}
+const apiData = (cep) => axios.get(`https://viacep.com.br/ws/${cep}/json`)
 
 app.get('/api/v1/cep', async (req, res) => {
-    
-    const { data } = await apiData()
+    try {
+        let validCep = /[0-9]{5}-[\d]{3}/.test(req.query.code) || /[0-9]{5}[\d]{3}/.test(req.query.code)
 
-    let validCep = /[0-9]{5}-[\d]{3}/.test(req.query.code) || /[0-9]{5}[\d]{3}/.test(req.query.code)
-
-    if(validCep){
+        if (validCep) {
             
-            res.status(200).json({
+            const { data } = await apiData(validCep)
             
-                "zipcode": data.cep,
-                "street": data.logradouro,
-                "street_number": data.complemento,
-                "neighborhood": data.bairro,
-                "city": data.localidade,
-                "state": data.uf,
-                "ibge": data.ibge
+            return res.status(200).json({
+                
+                zipcode: data.cep,
+                street: data.logradouro,
+                street_number: data.complemento,
+                neighborhood: data.bairro,
+                city: data.localidade,
+                state: data.uf,
+                ibge: data.ibge
             
             })
+        } else return res.status(400).json({ message: 'Invalid Request' })
 
+    } catch (err) {
+        res.status(500).json(err)
     }
-    else {
-        res.status(400).json({
-            message: "Invalid Request"
-        })
-    }
-
 })
 
-app.listen(3000)
+const port = process.env.PORT || 3000
+app.listen(port, () => console.log(`Server init url: http://localhost:${port}`))
